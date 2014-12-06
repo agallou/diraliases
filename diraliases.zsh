@@ -1,35 +1,54 @@
-function chpwd {
+function _importAliases() {
+  while read line
+  do
+      ALIASNAME=`echo "$line" | sed "s/\(\w*\)|\(.*\)|\(.*\)/\1/"`
+      ALIASDESC=`echo "$line" | sed "s/\(\w*\)|\(.*\)|\(.*\)/\2/"`
+      ALIASVALUE=`echo "$line" | sed "s/\(\w*\)|\(.*\)|\(.*\)/\3/"`
+      alias $ALIASNAME=$ALIASVALUE
+      
+  done < $1
+}
 
-#voir 
-#https://github.com/robbyrussell/oh-my-zsh/blob/master/plugins/per-directory-history/per-directory-history.zsh#L142
-#pour l'ajout au changement de dossier : 
-#chpwd_functions=(${chpwd_functions[@]} "_per-directory-history-change-directory")
+function _importUnaliases() {
+  while read line
+  do
+      ALIASNAME=`echo "$line" | sed "s/\(\w*\)|\(.*\)|\(.*\)/\1/"`
+      unalias $ALIASNAME
+      
+  done < $1
+}
 
-#toto mettre cela dans une fonction d'init appellée au démarrage
+
+function _initDirAliases() {
   DIRALIASES_WD="/home/agallou/.diraliases"
+
   DIRALIASES_WD_FILE="${DIRALIASES_WD}${PWD}/aliases"
-
-  if [ -f $DIRALIASES_WD_FILE ]; then
-    source $DIRALIASES_WD_FILE
-  fi
-
   DIRALIASES_PWD_FILE="${PWD}/aliases"
+
   if [ -f $DIRALIASES_WD_FILE ]; then
-    source $DIRALIASES_WD_FILE
+     _importAliases $DIRALIASES_WD_FILE
+  fi
+  if [ -f $DIRALIASES_PWD_FILE ]; then
+     _importAliases $DIRALIASES_PWD_FILE
   fi
 
-#parser une ligne de type alias top="toto" pour connaitre la liste des alias et les enlever
+  #au lancement $OLDPWD et $PWD sont identiques
+  if [[ $PWD == $OLDPWD ]]; then
+    return;
+  fi
 
-#on peux soit utiliser .diraliases ou /home/agallou/.diraliases/home/agallou/Projets/aliases
-
-#ajout un alias "global" diraliases qui va les liser (ou plutôt afficher le fichier)
   DIRALIASES_OLDWD_FILE="${DIRALIASES_WD}${OLDPWD}/aliases"
+  DIRALIASES_OLDPWD_FILE="${OLDPWD}/aliases"
 
   if [ -f $DIRALIASES_OLDWD_FILE ]; then
-    while read i
-    do
-      ALIAS=`echo $i | sed "s/alias \(.*\)=.*/\1/"`
-      unalias $ALIAS
-    done < $DIRALIASES_OLDWD_FILE
+     _importUnaliases $DIRALIASES_OLDWD_FILE
   fi
+  if [ -f $DIRALIASES_OLDPWD_FILE ]; then
+     _importUnaliases $DIRALIASES_OLDPWD_FILE
+  fi
+
+
 }
+
+chpwd_functions=(${chpwd_functions[@]} "_initDirAliases")
+_initDirAliases
